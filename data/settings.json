@@ -1,0 +1,44 @@
+{
+  "toggles": {
+    "eu_sol_corp": true,
+    "bones_festes": true,
+    "eu_erasmus": false,
+    "clock": true,
+    "i_love_agres": true
+  },
+  "display": {
+    "brightness": 255
+  },
+  "time": {
+    "timezone": "CET-1CEST,M3.5.0,M10.5.0/3",
+    "screen_on_h": 7,
+    "screen_on_m": 30,
+    "screen_off_h": 0,
+    "screen_off_m": 0
+  },
+  "styling": {
+    "global_text_color": "#FF00FF",
+    "scroll_speed_ms": 15
+  },
+  "order": [1, 2, 3, 4, 5],
+  "custom_messages": [
+    {
+      "text": "Benvinguts a l'escola!",
+      "color": "#FF0000",
+      "font_id": 2
+    },
+    {
+      "text": "Recordeu portar l'esmorzar.",
+      "color": "#00FF00",
+      "font_id": 1
+    },
+    {
+      "text": "Feliç dia a tots.",
+      "color": "#0000FF",
+      "font_id": 0
+    }
+  ],
+  "icons": [
+    "/icons/icon1.bin"
+  ]
+}

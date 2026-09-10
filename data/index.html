@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Matrix Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+body { background-color: #f8f9fa; } 
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        .canvas-container {
+            position: relative;
+            width: 384px;    /* Increased size for easier drawing */
+            height: 384px;
+            margin: 0 auto;
+            border: 2px solid #333;
+            background-color: #000;
+        }
+        #pixelCanvas { 
+            width: 100%; 
+            height: 100%; 
+            image-rendering: pixelated; 
+            cursor: crosshair; 
+            display: block;
+        }
+        .grid-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: 6px 6px; /* 384px / 64 pixels = 6px squares */
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+            pointer-events: none; /* Lets clicks pass through to the canvas */
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4"><div class="container"><span class="navbar-brand mb-0 h1">Matrix Controller</span></div></nav>
+    <div class="container">
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#users">NFC Users</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings">Settings</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#messages">Sequence & Messages</button></li>
+        </ul>
+        
+        <div class="tab-content">
+            <!-- Users Tab -->
+            <div class="tab-pane fade show active" id="users">
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between mb-3"><h4>NFC Cards</h4><button class="btn btn-success" onclick="addUser()">+ Add User</button></div>
+                    <table class="table table-striped">
+                        <thead><tr><th>UID (Hex)</th><th>Name</th><th>Message</th><th>Action</th></tr></thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                    <button class="btn btn-primary mt-2" onclick="saveUsers()">Save Users to Flash</button>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div class="tab-pane fade" id="settings">
+                <div class="row">
+                    <!-- Hardware Settings -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card p-4 h-100">
+                            <h4 class="mb-4">Display & Hardware</h4>
+                            
+                            <label class="form-label">Brightness: <span id="brightness_val" class="fw-bold text-primary">255</span></label>
+                            <input type="range" class="form-range mb-4" id="brightness" min="0" max="255" oninput="document.getElementById('brightness_val').innerText=this.value">
+                            
+                            <label class="form-label">Global Text Color</label>
+                            <input type="color" class="form-control form-control-color mb-4" id="global_text_color">
+
+                            <label class="form-label">Scroll Speed: <span id="scroll_speed_val" class="fw-bold text-primary">15</span> ms</label>
+                            <input type="range" class="form-range mb-3" id="scroll_speed_ms" min="1" max="50" oninput="document.getElementById('scroll_speed_val').innerText=this.value">
+                            <small class="text-muted d-block mb-3">Lower is faster.</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Time Settings -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card p-4 h-100">
+                            <h4 class="mb-4">Time & Sleep Schedule</h4>
+                            
+                            <label class="form-label">Timezone</label>
+                            <select class="form-select mb-4" id="timezone">
+                                <option value="CET-1CEST,M3.5.0,M10.5.0/3">Europe/Madrid (CET/CEST)</option>
+                                <option value="GMT0BST,M3.5.0/1,M10.5.0">Europe/London (GMT/BST)</option>
+                                <option value="UTC0">UTC (Universal Time)</option>
+                                <option value="EST5EDT,M3.2.0,M11.1.0">US/Eastern (EST/EDT)</option>
+                                <option value="PST8PDT,M3.2.0,M11.1.0">US/Pacific (PST/PDT)</option>
+                            </select>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="form-label">Screen Wakes At (Hour)</label>
+                                    <input type="number" class="form-control mb-3" id="screen_on_h" min="0" max="23">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Screen Sleeps At (Hour)</label>
+                                    <input type="number" class="form-control mb-3" id="screen_off_h" min="0" max="23">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-lg w-100" onclick="saveSettings()">Save Configuration</button>
+            </div>
+
+            <!-- Messages Tab -->
+            <div class="tab-pane fade" id="messages">
+                <div class="card p-4 mb-4">
+                    <h4>Active Animations</h4>
+                    <div class="row mt-3">
+                        <div class="col-md-4"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="clock"><label class="form-check-label">Clock</label></div></div>
+                        <div class="col-md-4"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="i_love_agres"><label class="form-check-label">I Love Agres</label></div></div>
+                        <div class="col-md-4"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="bones_festes"><label class="form-check-label">Bones Festes</label></div></div>
+                        <div class="col-md-4 mt-2"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="eu_sol_corp"><label class="form-check-label">EU Solidarity</label></div></div>
+                        <div class="col-md-4 mt-2"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="eu_erasmus"><label class="form-check-label">Erasmus+</label></div></div>
+                    </div>
+                </div>
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between mb-3"><h4>Custom Scrolling Texts</h4><button class="btn btn-success" onclick="addMessage()">+ Add Text</button></div>
+                    <div id="messagesContainer"></div>
+                    <button class="btn btn-primary mt-3 w-100" onclick="saveSettings()">Save Sequence & Messages</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Pixel Editor Modal -->
+    <div class="modal fade" id="paintModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Paint Custom Icon (64x64)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    
+                    <!-- New Canvas Wrapper with Grid -->
+                    <div class="canvas-container">
+                        <canvas id="pixelCanvas" width="64" height="64"></canvas>
+                        <div class="grid-overlay" id="gridOverlay"></div>
+                    </div>
+                    
+                    <div class="mt-4 d-flex justify-content-center align-items-center gap-4">
+                        <input type="color" id="paintColor" value="#FF0000" class="form-control form-control-color">
+                        
+                        <div class="form-check form-switch fs-5">
+                            <input class="form-check-input" type="checkbox" id="toggleGrid" checked onchange="document.getElementById('gridOverlay').style.display = this.checked ? 'block' : 'none'">
+                            <label class="form-check-label">Show Grid</label>
+                        </div>
+
+                        <button class="btn btn-secondary" onclick="clearCanvas()">Clear</button>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveIcon()">Save Icon to Device</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let usersData = [], settingsData = {};
+        let currentEditingMsg = 0;
+        
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        window.onload = async () => {
+            usersData = await (await fetch('/api/users')).json();
+            settingsData = await (await fetch('/api/settings')).json();
+            renderUsers(); populateSettings(); renderMessages();
+            clearCanvas();
+        };
+
+        // Users
+        function renderUsers() {
+            document.getElementById('usersTableBody').innerHTML = usersData.map((u, i) => `
+                <tr><td><input class="form-control" value="${u.uid}" onchange="usersData[${i}].uid=this.value"></td>
+                <td><input class="form-control" value="${u.name}" onchange="usersData[${i}].name=this.value"></td>
+                <td><input class="form-control" value="${u.message}" onchange="usersData[${i}].message=this.value"></td>
+                <td><button class="btn btn-danger" onclick="usersData.splice(${i},1); renderUsers()">X</button></td></tr>
+            `).join('');
+        }
+        function addUser() { usersData.push({uid:"0000", name:"New", message:"", group:1, icon:""}); renderUsers(); }
+        async function saveUsers() { await fetch('/api/users', {method:'POST', body:JSON.stringify(usersData)}); alert('Users Saved'); }
+        
+        // Settings
+        function populateSettings() {
+            const disp = settingsData.display || {};
+            const time = settingsData.time || {};
+            const styl = settingsData.styling || {};
+            const togs = settingsData.toggles || {};
+
+            document.getElementById('brightness').value = disp.brightness || 255;
+            document.getElementById('brightness_val').innerText = disp.brightness || 255;
+            
+            document.getElementById('scroll_speed_ms').value = styl.scroll_speed_ms || 15;
+            document.getElementById('scroll_speed_val').innerText = styl.scroll_speed_ms || 15;
+            document.getElementById('global_text_color').value = styl.global_text_color || "#FFFFFF";
+
+            document.getElementById('screen_on_h').value = time.screen_on_h || 7;
+            document.getElementById('screen_off_h').value = time.screen_off_h || 0;
+            
+            // Set timezone dropdown safely
+            let tzSelect = document.getElementById('timezone');
+            if (time.timezone && Array.from(tzSelect.options).some(opt => opt.value === time.timezone)) {
+                tzSelect.value = time.timezone;
+            } else if (time.timezone) {
+                // If custom timezone exists but isn't in dropdown, add it
+                tzSelect.add(new Option(time.timezone, time.timezone, true, true));
+            }
+
+            ['clock','i_love_agres','eu_erasmus','eu_sol_corp','bones_festes'].forEach(k => document.getElementById(k).checked = togs[k] || false);
+        }
+        
+        function renderMessages() {
+            document.getElementById('messagesContainer').innerHTML = (settingsData.custom_messages || []).map((m, i) => `
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-5"><input class="form-control" value="${m.text}" onchange="settingsData.custom_messages[${i}].text=this.value"></div>
+                    <div class="col-md-2">
+                        <select class="form-select" onchange="settingsData.custom_messages[${i}].font_id=parseInt(this.value)">
+                            <option value="0" ${m.font_id === 0 ? 'selected' : ''}>Small Font</option>
+                            <option value="1" ${m.font_id === 1 ? 'selected' : ''}>Medium Font</option>
+                            <option value="2" ${m.font_id === 2 ? 'selected' : ''}>Large Font</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1"><input type="color" class="form-control form-control-color w-100" value="${m.color}" onchange="settingsData.custom_messages[${i}].color=this.value"></div>
+                    <div class="col-md-2"><button class="btn btn-warning w-100" onclick="openPainter(${i})">Paint Icon</button></div>
+                    <div class="col-md-2"><button class="btn btn-outline-danger w-100" onclick="settingsData.custom_messages.splice(${i},1); renderMessages()">Delete</button></div>
+                </div>
+            `).join('');
+        }
+        function addMessage() { settingsData.custom_messages.push({text:"New Text", color:"#FFFFFF", font_id:2, icon_file:""}); renderMessages(); }
+        
+        async function saveSettings() {
+            settingsData.display = settingsData.display || {};
+            settingsData.time = settingsData.time || {};
+            settingsData.styling = settingsData.styling || {};
+            settingsData.toggles = settingsData.toggles || {};
+
+            settingsData.display.brightness = parseInt(document.getElementById('brightness').value);
+            settingsData.styling.scroll_speed_ms = parseInt(document.getElementById('scroll_speed_ms').value);
+            settingsData.styling.global_text_color = document.getElementById('global_text_color').value;
+
+            settingsData.time.screen_on_h = parseInt(document.getElementById('screen_on_h').value);
+            settingsData.time.screen_off_h = parseInt(document.getElementById('screen_off_h').value);
+            settingsData.time.timezone = document.getElementById('timezone').value;
+            
+            ['clock','i_love_agres','eu_erasmus','eu_sol_corp','bones_festes'].forEach(k => settingsData.toggles[k] = document.getElementById(k).checked);
+            
+            await fetch('/api/settings', {method:'POST', body:JSON.stringify(settingsData)}); 
+            alert('Configuration Saved Successfully');
+        }
+
+        // Painter Logic
+        function openPainter(index) {
+            currentEditingMsg = index; clearCanvas();
+            new bootstrap.Modal(document.getElementById('paintModal')).show();
+        }
+        function clearCanvas() { ctx.fillStyle = "#000000"; ctx.fillRect(0, 0, 64, 64); }
+        function drawPixel(e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (rect.width / 64));
+            const y = Math.floor((e.clientY - rect.top) / (rect.height / 64));
+            ctx.fillStyle = document.getElementById('paintColor').value;
+            ctx.fillRect(x, y, 1, 1);
+        }
+        canvas.addEventListener('mousedown', (e) => { drawing = true; drawPixel(e); });
+        canvas.addEventListener('mousemove', drawPixel);
+        window.addEventListener('mouseup', () => { drawing = false; });
+
+        async function saveIcon() {
+            const imgData = ctx.getImageData(0, 0, 64, 64).data;
+            const buffer = new Uint8Array(8192); 
+            for(let i = 0; i < 4096; i++) {
+                let rgb565 = ((imgData[i*4] & 0xF8) << 8) | ((imgData[i*4+1] & 0xFC) << 3) | (imgData[i*4+2] >> 3);
+                buffer[i*2] = rgb565 & 0xFF;
+                buffer[i*2+1] = (rgb565 >> 8) & 0xFF;
+            }
+            const filename = '/icons/msg_' + currentEditingMsg + '.bin';
+            await fetch('/api/upload_icon?file=' + filename, { method: 'POST', body: buffer });
+            settingsData.custom_messages[currentEditingMsg].icon_file = filename;
+            await saveSettings();
+            bootstrap.Modal.getInstance(document.getElementById('paintModal')).hide();
+        }
+    </script>
+</body>
+</html>

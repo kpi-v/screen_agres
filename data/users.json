@@ -1,0 +1,86 @@
+[
+  {
+    "uid": "089D",
+    "name": "ALEX",
+    "message": "Que tal esteu?",
+    "group": 1,
+    "icon": ""
+  },
+  {
+    "uid": "3E98",
+    "name": "PEP",
+    "message": "Tenia ganes de voret",
+    "group": 1,
+    "icon": ""
+  },
+  {
+    "uid": "3A9E",
+    "name": "JOAN MARIA",
+    "message": "IE TIOS",
+    "group": 1,
+    "icon": ""
+  },
+  {
+    "uid": "3B98",
+    "name": "JULEN",
+    "message": "hola com esteu",
+    "group": 1,
+    "icon": ""
+  },
+  {
+    "uid": "7299",
+    "name": "ISONA",
+    "message": "ES LA MES GUAPA DEL MON MUNDIAL",
+    "group": 1,
+    "icon": ""
+  },
+  {
+    "uid": "6C99",
+    "name": "Ferran",
+    "message": "M'agraden molt les estrascolars de Natxo",
+    "group": 2,
+    "icon": ""
+  },
+  {
+    "uid": "7599",
+    "name": "Bruna",
+    "message": "hola, Bruna",
+    "group": 2,
+    "icon": ""
+  },
+  {
+    "uid": "4798",
+    "name": "Yago",
+    "message": "tinc que anar al bany",
+    "group": 2,
+    "icon": ""
+  },
+  {
+    "uid": "0000",
+    "name": "Lola",
+    "message": "quintoooos 2025",
+    "group": 2,
+    "icon": ""
+  },
+  {
+    "uid": "0000",
+    "name": "Laura",
+    "message": "toque el trombo",
+    "group": 2,
+    "icon": ""
+  },
+  {
+    "uid": "7899",
+    "name": "Paula",
+    "message": "SIMONA ES LA MILLOR MESTRA DEL MON",
+    "group": 2,
+    "icon": ""
+  },
+  {
+    "uid": "4198",
+    "name": "LLUIS",
+    "message": "bona bespra ",
+    "group": 2,
+    "icon": ""
+  }
+]
