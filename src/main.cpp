@@ -425,9 +425,11 @@ if (pending_settings_save || pending_users_save || pending_icon_save) {
     
     if (current_settings.show_clock) { clock(dma_display, &timeClient, 30000, try_uid_read_delay); }
     if (current_settings.show_i_love_agres) { i_love_agres_animation(dma_display, 30000, try_uid_read_delay); }
+    draw_amics();
 
     for (const CustomMessage& msg : current_settings.custom_messages) {
         scroll_custom_message(msg);
+        draw_amics();
         try_uid_read_delay(1000);
     }
 }
