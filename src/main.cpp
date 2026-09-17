@@ -390,7 +390,7 @@ if (pending_settings_save || pending_users_save || pending_icon_save) {
         ESP.restart(); 
     }
 
-    if (WiFi.status() != WL_CONNECTED) { WiFi.reconnect(); delay(1000); }
+    if (WiFi.status() != WL_CONNECTED) { ESP.restart(); }
        timeClient.update(); 
     yield();
     int hour = timeClient.getHours();
